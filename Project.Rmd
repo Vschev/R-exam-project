@@ -1,0 +1,191 @@
+---
+title: "Oysters"
+output: html_document
+date: "2022-11-24"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+##0. Adding libraries
+```{r}
+install.packages("dplyr")                          
+install.packages("plyr")                           
+install.packages("readr")
+
+library(dplyr)
+library(plyr)
+library(readr)
+```
+##1. Merging files. ldply function in plyr library automatically reassigns types
+if they are incompatible
+```{r}
+merger <- function(path) {
+  setwd(path)
+  ldply(list.files(path), read.csv, header=TRUE)
+}
+dataset <- merger("C:/RStudio/Codes/Data")
+```
+##2. EDA.
+We start by looking at the data
+```{r}
+summary(dataset)
+```
+It has the character types in columns that normally should be doubles
+meaning that some values couldn't be formatted as doubles (words?)
+We can force it though, these values will be swapped with NAs
+```{r}
+dataset$Rings <- as.double(dataset$Rings)
+names(dataset)[2] <- "sex"
+dataset$sex <- as.double(dataset$sex)
+dataset$Length <- as.double(dataset$Length)
+```
+Sex can now be presented as factor:
+```{r}
+dataset$sex <- as.factor(dataset$sex)
+```
+Alternative here would be expelling the student who made the files.
+Also these "text values" can be found  using if clauses
+We just assume there are not much of them and it doesn't worth writing longer code
+
+Visualising outliers
+```{r}
+boxplot(dataset)
+```
+#For better scaling:
+```{r}
+boxplot(dataset[-c(1, 2)])
+```
+
+#covariations
+```{r}
+plot(dataset[-2])
+```
+Most, if not all, stats look to be positively correlated with each other!
+Some of those correlations might mean direct dependencies, 
+both linear and non-linear. For example, the higher total weight is derived
+from higher weights of body parts
+
+##3. Means and medians by sex
+```{r}
+dataset2 <- filter(dataset, !is.na(sex))
+dataset2 <- group_by(dataset2, sex)
+a <- summarise(dataset2, 
+               means = mean(Length, na.rm = TRUE), 
+               sds = sd(Length, na.rm = TRUE))
+View(a)
+```
+
+##4. Height>0.165
+```{r}
+low <- filter(dataset, Height <= 0.165)
+percent <- nrow(low)/nrow(dataset)*100
+percent
+```
+
+##5. 92% percentile
+```{r}
+datasetL <- filter(dataset, !is.na(Length)) %>%
+  arrange(Length)
+perc = nrow(datasetL) * 0.92
+datasetL$Length[perc]
+```
+
+##6. Z-scores
+```{r}
+a_total <- summarise(dataset, 
+                     means = mean(Length, na.rm = TRUE), 
+                     sds = sd(Length, na.rm = TRUE))
+dataset$Length_z_scores <- (dataset$Length - a_total[[1]])/a_total[[2]]
+```
+
+##7. Diameters ~ rings
+```{r}
+young <- filter(dataset, Rings == 5)
+old <- filter(dataset, Rings == 15)
+boxplot(young$Diameter, old$Diameter, 
+        xlab = "Rings", ylab = "Diameter", 
+        main = "Mollusk groups by ring number", names = c(5, 15))
+```
+We can see that (1.5 x IQR)-s of both groups do not overlap, which means that
+two groups differ in diameter significantly; 
+mollusks with 15 rings have higher diameter
+
+##8. Diameter ~ Whole_weight
+In step 2, we saw relations between most parameters. We might plot these two:
+```{r}
+plot(dataset$Diameter, dataset$Whole_weight,
+     xlab = "Diameter", ylab = "Whole_weight")
+```
+It probably shows non-linear relation between them.
+Still, we might use non-parametric correlation:
+```{r}
+new_set <- filter(dataset, !is.na(Diameter), !is.na(Whole_weight))
+cor(new_set$Diameter, new_set$Whole_weight, method = "spearman")
+```
+We get 0.9712717 as our value, which is very high 
+and ensures that correlation is not shallow
+It might be good as a linear model, too:
+```{r}
+summary(lm(Whole_weight ~ Diameter, data = new_set))
+```
+It's R^2 is 0.857, and residual errors we get are a bit too high though. 
+We might try something else.
+
+##9. We might assume our mollusks' mass is distributed equally within volume,
+as nothing says otherwise. Then, their weight is proportional to the volume.
+If they are also cylindrical (like petry dish),
+then their volume is proportional to the surface square.
+The square should be dependent on diameter: S = π*d^2 : 4
+This means that S (and total weight) should have linear relation with d^2
+We can check if this is the case
+```{r}
+summary(lm(Diameter ~ Whole_weight, data = new_set))
+new_set$squaredd <- new_set$Diameter^2
+plot(new_set$squaredd, new_set$Whole_weight,
+     xlab = "Diameter_squared", ylab = "Whole_weight")
+cor(new_set$squaredd, new_set$Whole_weight)
+summary(lm(Whole_weight ~ squaredd, data = new_set))
+```
+We get a linear model: Weight = -0.26 + 6.17*(d^2) 
+R^2 = 0.91, which is reasonably good for the highly varied sample.
+However, intercept is way below zero, and this model is poor in predicting the
+weight at low diameters. The possible explanation here is that this sample forms a part of a logistic curve:
+As we can see from the last plot, it has a plateau at low diameters, with some lowest critical weight
+(beyond which they can't go, packing tighter their organs instead). In the same way,
+it could be expected that there is a max possible weight. 
+These mollusks don't reach it though, but maybe some other species do.
+
+Also, it would be interesting to see how we can predict age by other parametres?
+Or oppositely, predict any changes to be associated with age?
+It looks to be so for height and diameter at least.
+
+removing the couple outliers for scaling:
+```{r}
+dataset <- filter(dataset, Height < 0.4)
+plot(dataset$Rings, dataset$Height,
+     xlab = "Rings", ylab = "Height")
+plot(dataset$Rings, dataset$Diameter,
+     xlab = "Rings", ylab = "Diameter")
+```
+For these and other parametres, 
+it "seems" that they stop growing when mollusk gets 10-11 rings.
+They variate highly, however, and it is hard to call these results significant.
+
+One intriguing thing to find here is the ratio between sexes with different ring numbers.
+1 - males, 2 - females, 3 - juveniles
+```{r}
+dataset$Rings <- as.factor(dataset$Rings)
+plot(dataset$Rings, dataset$sex,
+     xlab = "Rings", ylab = "Sex")
+```
+It can be clearly seen that the number of juvenile species drops with more rings, 
+meaning that their number is corresponds with age well.
+the m/f ratio favors males at first but changes to 1:1 later.
+This might indicate some variance in their population structure at birth or later.
+In some organisms, mortality is high in one sex at birth and soon after.
+Also it might mean that the development of sex organs might be prolonged in females,
+and they mostly go to "juvenile" group at low ring numbers.
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
