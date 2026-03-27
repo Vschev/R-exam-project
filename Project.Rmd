@@ -44,9 +44,9 @@ Sex can now be presented as factor:
 ```{r}
 dataset$sex <- as.factor(dataset$sex)
 ```
-Alternative here would be expelling the student who made the files.
-Also these "text values" can be found  using if clauses
-We just assume there are not much of them and it doesn't worth writing longer code
+
+Also, these "text values" can be found  using if clauses
+We just assume there are not many of them, and it's not worth writing longer code
 
 Visualising outliers
 ```{r}
@@ -64,7 +64,7 @@ plot(dataset[-2])
 Most, if not all, stats look to be positively correlated with each other!
 Some of those correlations might mean direct dependencies, 
 both linear and non-linear. For example, the higher total weight is derived
-from higher weights of body parts
+from the higher weights of body parts
 
 ##3. Means and medians by sex
 ```{r}
@@ -107,9 +107,9 @@ boxplot(young$Diameter, old$Diameter,
         xlab = "Rings", ylab = "Diameter", 
         main = "Mollusk groups by ring number", names = c(5, 15))
 ```
-We can see that (1.5 x IQR)-s of both groups do not overlap, which means that
-two groups differ in diameter significantly; 
-mollusks with 15 rings have higher diameter
+We can see that (1.5 x IQR)-s of both groups do not overlap, which means that 
+the two groups differ significantly in diameter. 
+Mollusks with 15 rings have a higher diameter
 
 ##8. Diameter ~ Whole_weight
 In step 2, we saw relations between most parameters. We might plot these two:
@@ -117,7 +117,7 @@ In step 2, we saw relations between most parameters. We might plot these two:
 plot(dataset$Diameter, dataset$Whole_weight,
      xlab = "Diameter", ylab = "Whole_weight")
 ```
-It probably shows non-linear relation between them.
+It probably shows a non-linear relation between them.
 Still, we might use non-parametric correlation:
 ```{r}
 new_set <- filter(dataset, !is.na(Diameter), !is.na(Whole_weight))
@@ -129,15 +129,15 @@ It might be good as a linear model, too:
 ```{r}
 summary(lm(Whole_weight ~ Diameter, data = new_set))
 ```
-It's R^2 is 0.857, and residual errors we get are a bit too high though. 
+It's R^2 is 0.857, and the residual errors we get are a bit too high, though. 
 We might try something else.
 
 ##9. We might assume our mollusks' mass is distributed equally within volume,
 as nothing says otherwise. Then, their weight is proportional to the volume.
 If they are also cylindrical (like petry dish),
-then their volume is proportional to the surface square.
+then their volume is proportional to the surface area.
 The square should be dependent on diameter: S = π*d^2 : 4
-This means that S (and total weight) should have linear relation with d^2
+This means that S (and total weight) should have a linear relation with d^2
 We can check if this is the case
 ```{r}
 summary(lm(Diameter ~ Whole_weight, data = new_set))
@@ -149,18 +149,18 @@ summary(lm(Whole_weight ~ squaredd, data = new_set))
 ```
 We get a linear model: Weight = -0.26 + 6.17*(d^2) 
 R^2 = 0.91, which is reasonably good for the highly varied sample.
-However, intercept is way below zero, and this model is poor in predicting the
+However, the intercept is way below zero, and this model is poor at predicting the
 weight at low diameters. The possible explanation here is that this sample forms a part of a logistic curve:
-As we can see from the last plot, it has a plateau at low diameters, with some lowest critical weight
-(beyond which they can't go, packing tighter their organs instead). In the same way,
+As we can see from the last plot, it has a plateau at low diameters, with a certain lowest critical weight
+(beyond which they can't go, packing their organs tighter instead). In the same way,
 it could be expected that there is a max possible weight. 
-These mollusks don't reach it though, but maybe some other species do.
+These mollusks don't reach it, though, but maybe some other species do.
 
-Also, it would be interesting to see how we can predict age by other parametres?
-Or oppositely, predict any changes to be associated with age?
+Also, it would be interesting to see how we can predict age by other parameters.
+Or, oppositely, predict any changes to be associated with age?
 It looks to be so for height and diameter at least.
 
-removing the couple outliers for scaling:
+removing the couple of outliers for scaling:
 ```{r}
 dataset <- filter(dataset, Height < 0.4)
 plot(dataset$Rings, dataset$Height,
@@ -168,9 +168,9 @@ plot(dataset$Rings, dataset$Height,
 plot(dataset$Rings, dataset$Diameter,
      xlab = "Rings", ylab = "Diameter")
 ```
-For these and other parametres, 
-it "seems" that they stop growing when mollusk gets 10-11 rings.
-They variate highly, however, and it is hard to call these results significant.
+For these and other parameters, 
+it "seems" that they stop growing when the mollusk gets 10-11 rings.
+They vary highly, however, and it is hard to call these results significant.
 
 One intriguing thing to find here is the ratio between sexes with different ring numbers.
 1 - males, 2 - females, 3 - juveniles
@@ -180,12 +180,12 @@ plot(dataset$Rings, dataset$sex,
      xlab = "Rings", ylab = "Sex")
 ```
 It can be clearly seen that the number of juvenile species drops with more rings, 
-meaning that their number is corresponds with age well.
-the m/f ratio favors males at first but changes to 1:1 later.
+meaning that their number corresponds with age well.
+The m/f ratio favors males at first but changes to 1:1 later.
 This might indicate some variance in their population structure at birth or later.
 In some organisms, mortality is high in one sex at birth and soon after.
-Also it might mean that the development of sex organs might be prolonged in females,
-and they mostly go to "juvenile" group at low ring numbers.
+Also, it might mean that the development of sex organs might be prolonged in females,
+and they mostly go to the "juvenile" group at low ring numbers.
 ## R Markdown
 
 This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
